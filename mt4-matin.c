@@ -86,15 +86,14 @@ int OnInit()
   { 
     companyName = AccountCompany();
     StringToLower(companyName);
-
-    MINI_LOT = MarketInfo(eaSymbol, MODE_MINLOT); // 最小仓位
-
-
     eaSymbol = Symbol();
 
     // 初始化
     prePrice = SymbolInfoDouble(eaSymbol, SYMBOL_BID); // 卖价
     preTime = TimeCurrent();
+    divideOnceFlag = false;
+    isSleeping = false;
+    MINI_LOT = MarketInfo(eaSymbol, MODE_MINLOT); // 最小仓位
 
 
    if(IS_SHOW_PRICE_OBJECT == 1) {
@@ -338,7 +337,7 @@ void IsWaveTooMuch() {
      prePrice = postPrice;
      Print(eaSymbol, ":", "Attention=========up and down is too much==============", MathAbs(postPrice - prePrice));
   } 
-  if(postTime - preTime > 60*60){
+  if(postTime - preTime > 60*30){
     isSleeping = false;
     preTime = postTime;
     prePrice = postPrice;
