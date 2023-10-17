@@ -21,6 +21,10 @@ double MINI_LOT = 0.01; // 最小仓位
 input double TACKPROFIT_POINT = 0; // 止盈点数
 input double WAVE_POINT = 0; // 波动多大开始加仓
 input double SOLVE_POINT = 0; // 首单波动多大开始对冲
+// 为了防止EA意外盲目开单情况，做此限制。当停止开单确认无误后，再提高此数量
+input int SYMBOLLIMIT_TOTAL = 10 // 每个品种最多开多少单
+
+
 input double STARTLOT = 0.05; // 第一单手数大小
 input double SEPLOT = 0.05; // 间隔手数
 input int divideHolding = 30; // 分隔单持仓多久(s)
@@ -55,11 +59,8 @@ string buttonID6="今日最低";
 
 int IS_SHOW_PRICE_OBJECT = 1; // 是否显示自定义面板
 
-
-
  /*
-单向马丁策略
-
+单马丁策略
 
  第一单随机开仓0.05
  间隔20点加仓，止盈13个点
@@ -122,6 +123,9 @@ void OnTick()
      PrintEARunningDays();
     
     int eaSymboltotal = GetEaSymbolTotal();
+    if(eaSymboltotal > SYMBOLLIMIT_TOTAL) {
+      return;
+    }
    //  Print(eaSymbol, ":", "eaSymboltotal=", eaSymboltotal);
   
     if(eaSymboltotal == 0) {
@@ -174,8 +178,8 @@ void CheckOrders(){
    double newOpenVolume = 0.0;
    double newOpenProfit = 0.0;
    double newOpenOrderType = 0;
-   double currentPrice =  SymbolInfoDouble(eaSymbol, SYMBOL_BID); // 卖价
-  for(int i=0;i<total;i++)
+   double currentPrice = SymbolInfoDouble(eaSymbol, SYMBOL_BID);; // 卖，用BID价格对比
+   for(int i=0;i<total;i++)
     {
    if(OrderSelect(i,SELECT_BY_POS)==false) continue;
    string symbol = OrderSymbol();
@@ -209,6 +213,10 @@ void CheckOrders(){
     if(isSleeping) { // 半小时内涨跌太多，停止做单
       return;
     }
+
+   if(newOpenOrderType == 0) { // 买，用ASK价格对比
+      currentPrice =  SymbolInfoDouble(eaSymbol, SYMBOL_ASK); // 买价
+   }
 
     if(newOpenProfit < 0 &&  MathAbs(NormalizeDouble(currentPrice - newOpenPrice, 4)) > WAVE_POINT ) { //如果当前价格与最近交易单子，亏损大于20个点
         double tp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + TACKPROFIT_POINT;  // buy
