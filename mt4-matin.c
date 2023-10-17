@@ -22,7 +22,7 @@ input double TACKPROFIT_POINT = 0; // 止盈点数
 input double WAVE_POINT = 0; // 波动多大开始加仓
 input double SOLVE_POINT = 0; // 首单波动多大开始对冲
 // 为了防止EA意外盲目开单情况，做此限制。当停止开单确认无误后，再提高此数量
-input int SYMBOLLIMIT_TOTAL = 10 // 每个品种最多开多少单
+input int SYMBOLLIMIT_TOTAL = 10; // 每个品种最多开多少单
 
 
 input double STARTLOT = 0.05; // 第一单手数大小
@@ -86,15 +86,14 @@ int OnInit()
   { 
     companyName = AccountCompany();
     StringToLower(companyName);
-
-    MINI_LOT = MarketInfo(eaSymbol, MODE_MINLOT); // 最小仓位
-
-
     eaSymbol = Symbol();
 
     // 初始化
     prePrice = SymbolInfoDouble(eaSymbol, SYMBOL_BID); // 卖价
     preTime = TimeCurrent();
+    divideOnceFlag = false;
+    isSleeping = false;
+    MINI_LOT = MarketInfo(eaSymbol, MODE_MINLOT); // 最小仓位
 
 
    if(IS_SHOW_PRICE_OBJECT == 1) {
@@ -338,7 +337,7 @@ void IsWaveTooMuch() {
      prePrice = postPrice;
      Print(eaSymbol, ":", "Attention=========up and down is too much==============", MathAbs(postPrice - prePrice));
   } 
-  if(postTime - preTime > 60*60){
+  if(postTime - preTime > 60*30){
     isSleeping = false;
     preTime = postTime;
     prePrice = postPrice;
