@@ -12,6 +12,7 @@
 const string FIRST_COMMENT = "ea_start_1_"; // 第一单的comment
 const string DIVIDE_FLAG_COMMENT = "DIVIDE_FLAG_";
 
+
 double floatProfit = 0.0; // 浮盈&浮亏
 double historyProfit = 0.0; // 此轮历史盈利
 double maxLossPoint = 0; // 首单浮亏多少点
@@ -23,6 +24,7 @@ input double WAVE_POINT = 0; // 波动多大开始加仓
 input double SOLVE_POINT = 0; // 首单波动多大开始对冲
 // 为了防止EA意外盲目开单情况，做此限制。当停止开单确认无误后，再提高此数量
 input int SYMBOLLIMIT_TOTAL = 10; // 每个品种最多开多少单
+input int MAX_SPREAD = 30; // 点差大于多少不交易
 
 
 input double STARTLOT = 0.05; // 第一单手数大小
@@ -35,8 +37,8 @@ string eaSymbol = "";
 double flag_EARunningDays = 0;
 double EARunningDays = 0;
 
-// 当前订单总数
-int total = 0;
+// // 当前订单总数
+// int total = 0;
 
 // 当等于true时不交易
 bool isSleeping = false;
@@ -123,6 +125,7 @@ void OnTick()
     
     int eaSymboltotal = GetEaSymbolTotal();
     if(eaSymboltotal > SYMBOLLIMIT_TOTAL) {
+      Print("eaSymboltotal exceed the max, please SET!========================", eaSymboltotal);
       return;
     }
    //  Print(eaSymbol, ":", "eaSymboltotal=", eaSymboltotal);
@@ -257,6 +260,11 @@ void openOrder(string symbol, int orderType = 0, double volume = 0.01, double st
         openPrice = openPrice - 0.02;
      }
 
+     double spread = MarketInfo(eaSymbol, MODE_SPREAD);
+     if(spread > MAX_SPREAD) { // 点差扩大不开仓
+       return;
+     }
+
 
      bool res =  OrderSend(symbol, orderType, volume, openPrice, 30, st, tp, comment , 0, 0 );
       if(!res)
@@ -346,6 +354,7 @@ void IsWaveTooMuch() {
 }
 //+--------------------------获取EA开仓的方向-------------------------------------------+
 int GetOpenOrderType() {
+  int total = OrdersTotal();
   for(int i=0;i<total;i++)
     {
      if(OrderSelect(i,SELECT_BY_POS)==false) continue;
