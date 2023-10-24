@@ -1,5 +1,5 @@
 
-
+//https://xueqiu.com/1227896389/263712310
 #property strict
 input double INIT_LOSS_POINT = 0;
 input double INIT_HIGH_POINT = 0;
