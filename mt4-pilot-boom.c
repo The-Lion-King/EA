@@ -7,9 +7,11 @@
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
+// #include <mine.mqh>
 
 // 常量不修改
 const string FIRST_COMMENT = "ea_just do it_"; // 第一单的comment
+input int MAX_SPREAD = 30; // 点差大于多少不交易
 
 double MINI_LOT = 0.01; // 最小仓位
 
@@ -19,12 +21,12 @@ input double EACH_LOT = 0; // 开单大小
 input double PROFIT_POINT = 0; // 盈利多少点开始追踪止损
 input double CHASE_POINT = 0; // 追踪止损点数
 
+// 为了防止EA意外盲目开单情况，做此限制。当停止开单确认无误后，再提高此数量
+input int SYMBOLLIMIT_TOTAL = 10; // 每个品种最多开多少单
 
 
 string companyName = ""; // 外汇平台是哪家
 string eaSymbol = "";
-double flag_EARunningDays = 0;
-double EARunningDays = 0;
 
 
 string sendText = "init text";
@@ -33,6 +35,9 @@ string buttonID_sell="sellSymbol";
 string buttonID_log="logSymbol";
 
 int IS_SHOW_PRICE_OBJECT = 1; // 是否显示自定义面板
+
+double flag_EARunningDays = 0;
+double EARunningDays = 0;
 
  /*
  爆点策略辅助工具
@@ -75,13 +80,20 @@ void OnDeinit(const int reason)
 void OnTick()
   {
     if(PROFIT_POINT == 0 || PROFIT_POINT == 0 || EACH_LOT == 0) {
-       ObjectSetString(0, buttonID_log, OBJPROP_TEXT, "NO PARAMS, please SET!========================");  
+       ObjectSetString(0, buttonID_log, OBJPROP_TEXT, "NO PARAMS, please SET!======");  
        Print("NO PARAMS, please SET!========================");
        return;
      }
+
+    int total = OrdersTotal();
+    if(total > SYMBOLLIMIT_TOTAL) {
+      ObjectSetString(0, buttonID_log, OBJPROP_TEXT, "exceed the max ..."); 
+      return;
+    }
+
     PrintEARunningDays();
     modifyOrder(); 
-  //  ObjectSetString(0, buttonID_log, OBJPROP_TEXT, "77778888888888");  
+    ObjectSetString(0, buttonID_log, OBJPROP_TEXT, MarketInfo(eaSymbol, MODE_SPREAD));  
   }
 
 
@@ -116,18 +128,6 @@ void OnChartEvent(const int id,
 
 
 
-//+--------------------------EA运行天数-------------------------------------------+
-void PrintEARunningDays() {
-    if(Hour() == 2 && flag_EARunningDays == 0) {
-      EARunningDays++;
-      flag_EARunningDays = 1;
-    } else if(Hour() != 2) {
-      flag_EARunningDays = 0;
-    }
-   Print("account#",  AccountNumber() , ", EA is runing ", EARunningDays + " days");
-}
-
-
 void InitPriceShowObject() {
    initObject(buttonID_buy, "开多", 50, 30);
    initObject(buttonID_sell, "开空", 240, 30);
@@ -160,15 +160,16 @@ void modifyOrder(){
     {
    if(OrderSelect(pos,SELECT_BY_POS)==false) continue;
    if(StringFind(OrderSymbol(), eaSymbol) == -1) continue;
-     double currentPrice = SymbolInfoDouble(eaSymbol, SYMBOL_BID);
      double openPrice =  OrderOpenPrice();
      int orderType = OrderType(); // 0:buy，1:sell
      double order_sl = OrderStopLoss();
 
      // 计算止损。buy ASK, sell BID
      double sl = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) - CHASE_POINT; // buy
+     double currentPrice = SymbolInfoDouble(eaSymbol, SYMBOL_ASK);
      if(orderType == 1) {
         sl = SymbolInfoDouble(eaSymbol, SYMBOL_BID) + CHASE_POINT;
+        currentPrice =  SymbolInfoDouble(eaSymbol, SYMBOL_BID);
      }
 
      bool tooMuchStopLoss = false;
@@ -196,6 +197,44 @@ void modifyOrder(){
     }
 }
 
+//+--------------------------EA运行天数-------------------------------------------+
+void PrintEARunningDays() {
+    if(Hour() == 2 && flag_EARunningDays == 0) {
+      EARunningDays++;
+      flag_EARunningDays = 1;
+    } else if(Hour() != 2) {
+      flag_EARunningDays = 0;
+    }
+   Print("account#",  AccountNumber() , ", EA is runing ", EARunningDays + " days");
+}
+
+
+//+-----------------------开仓-------------------------------------------+
+void openOrder(string symbol, int orderType = 0, double volume = 0.01, double st = 0, double tp = 0, string comment = ""){
+    
+     // string symbol = Symbol();
+    //  int orderType = orderType; // 0:buy，1:sell
+     double openPrice = SymbolInfoDouble(symbol, SYMBOL_ASK);// 买价
+     if(orderType == 1) { // sell
+        openPrice = SymbolInfoDouble(symbol, SYMBOL_BID); // 卖价
+     }else if(orderType == 2) { // 挂单
+        openPrice = openPrice - 0.02;
+     }
+
+     double spread = MarketInfo(eaSymbol, MODE_SPREAD);
+     if(spread > MAX_SPREAD) { // 点差扩大不开仓
+       return;
+     }
+
+
+     bool res =  OrderSend(symbol, orderType, volume, openPrice, 30, st, tp, comment , 0, 0 );
+      if(!res)
+          Print("Error in OrderSend. Error code=",GetLastError());
+      else {
+          Print("OrderSend  successfully.");
+      }      
+    
+}
 
 //+-----------------------平仓-------------------------------------------+
 void CloseOrder(string closeType = "11111", ulong ticket = 10000, string symbol = "init")
@@ -251,28 +290,4 @@ void CloseOrder(string closeType = "11111", ulong ticket = 10000, string symbol 
       // If there was an error, log it.
       if (res == false) Print("ERROR - Unable to close the order - ", OrderTicket(), " - ", GetLastError());
    }
-}
-
-
-
-//+-----------------------开仓-------------------------------------------+
-void openOrder(string symbol, int orderType = 0, double volume = 0.01, double st = 0, double tp = 0, string comment = ""){
-    
-     // string symbol = Symbol();
-    //  int orderType = orderType; // 0:buy，1:sell
-     double openPrice = SymbolInfoDouble(symbol, SYMBOL_ASK);// 买价
-     if(orderType == 1) { // sell
-        openPrice = SymbolInfoDouble(symbol, SYMBOL_BID); // 卖价
-     }else if(orderType == 2) { // 挂单
-        openPrice = openPrice - 0.02;
-     }
-
-
-     bool res =  OrderSend(symbol, orderType, volume, openPrice, 30, st, tp, comment , 0, 0 );
-      if(!res)
-          Print("Error in OrderSend. Error code=",GetLastError());
-      else {
-          Print("OrderSend  successfully.");
-      }      
-    
 }
