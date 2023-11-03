@@ -1,12 +1,12 @@
 
 //https://xueqiu.com/1227896389/263712310
 #property strict
-input double INIT_LOSS_POINT = 0;
-input double INIT_HIGH_POINT = 0;
-input double INIT_PROFIT_BACK_POINT = 0;
-input double INIT_PROFIT_POINT = 0;
-input double LOT = 0.05; // 第一单手数大小
+input double INIT_LOSS_POINT = 0.3;
+input double INIT_HIGH_POINT = 0.5;
+input double INIT_PROFIT_BACK_POINT = 0.4;
+input double LOT = 0.05; // 一单手数大小
 string eaSymbol = "";
+input int MAX_SPREAD = 50; // 点差大于多少不交易
 const string FIRST_COMMENT = "ea_start_1_"; // 第一单的comment
 
 int OnInit()
@@ -22,7 +22,7 @@ void OnTick(){
         int orderType = GetRandomOrderType();
         openOrder(eaSymbol, orderType, LOT, 0, 0, FIRST_COMMENT + eaSymbol);
     }
-    checkOrders()
+    checkOrders();
 }
 
 int GetEaSymbolTotal(){
@@ -78,47 +78,46 @@ int GetRandomOrderType() {
 void checkOrders(){
     int total = OrdersTotal();
     double currentPrice = SymbolInfoDouble(Symbol(), SYMBOL_BID);
+    double openPrice = 0.0;
+    double openProfit = 0.0;
+    double openOrderType = 0;
+    double orderSt = 0.0;
+    double orderLots = 0.0;
+    double maxLossPoint = 0.0;
+    double ticket = 0.0;
+    string orderSymbol = OrderSymbol();
     for(int i = 0; i< total; i++) {
         if(OrderSelect(i,SELECT_BY_POS) == false) continue;
-
         openPrice = OrderOpenPrice();
         openOrderType = OrderType();
         openProfit = OrderProfit() + OrderSwap();
         maxLossPoint = MathAbs(NormalizeDouble(currentPrice - openPrice, 4));
         ticket = OrderTicket();
         orderSt = OrderStopLoss();
-        orderLots = OrderLots
+        orderLots = OrderLots();
         if(openProfit < 0 && maxLossPoint >= INIT_LOSS_POINT){
             double price = MarketInfo(orderSymbol, MODE_BID);
             if(openOrderType == 1) {
                 price = MarketInfo(orderSymbol, MODE_ASK);
             }
             // 关闭订单
-            OrderClose(ticket, orderLots, price)
+            closeOrder(ticket, orderLots, price);
         }
         if(openProfit > 0 && maxLossPoint > INIT_HIGH_POINT){
             //上移止损点位 INIT_HIGH_POINT - INIT_PROFIT_BACK_POINT  OrderModify
-            st = NormalizeDouble(currentPrice - INIT_HIGH_POINT - INIT_PROFIT_BACK_POINT, 4);
+            double st = NormalizeDouble(currentPrice - INIT_HIGH_POINT - INIT_PROFIT_BACK_POINT, 4);
             if(openOrderType == 1){
                 st = NormalizeDouble(currentPrice +( INIT_HIGH_POINT - INIT_PROFIT_BACK_POINT ), 4);
             }
-            OrderModify(ticket, openPrice, st)
+            modifyOrder(ticket, openPrice, st);
         }
     }
 }
 
 void modifyOrder(ulong ticket, double price, double st = 0, double tp = 0){
-    OrderModify(ticket, price, st, tp)
+    OrderModify(ticket, price, st, tp, 0);
 }
 
 void closeOrder(int ticket, double vol, double price, int slippage = 0) {
-    OrderClose(ticket, vol, price, slippage)
+    OrderClose(ticket, vol, price, slippage);
 }
-
-
-
-
-
-
-
-
