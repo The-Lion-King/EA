@@ -62,6 +62,7 @@ int OnInit()
    }
 
 
+
    printf("init event");
 
 //---
@@ -90,11 +91,39 @@ void OnTick()
       ObjectSetString(0, buttonID_log, OBJPROP_TEXT, "exceed the max ..."); 
       return;
     }
+      int eaSymboltotal = GetEaSymbolTotal();
+      if(eaSymboltotal == 0) {
+          int orderType = GetRandomOrderType();
+          double sl = 0.0;
+          if(orderType == 1){
+              sl = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) - CHASE_POINT;  // 买价
+              //     Comment("buy_sl=" + sl);
+              openOrder(eaSymbol, 0, EACH_LOT, sl, 0, FIRST_COMMENT + eaSymbol); // buy
 
+              //  printf( "I am in buy the order event....");
+          }else {
+              sl = SymbolInfoDouble(eaSymbol, SYMBOL_BID) + CHASE_POINT;
+              //    Comment("sell_sl=" + sl);
+              openOrder(eaSymbol, 1, EACH_LOT, sl, 0, FIRST_COMMENT + eaSymbol); // sell
+
+          }
+      }
     PrintEARunningDays();
-    modifyOrder(); 
-    ObjectSetString(0, buttonID_log, OBJPROP_TEXT, MarketInfo(eaSymbol, MODE_SPREAD));  
+    modifyOrder();
   }
+
+int GetEaSymbolTotal(){
+    int total=OrdersTotal();
+    int eaTotal = 0;
+    for(int i=0;i<total;i++)
+    {
+        if(OrderSelect(i,SELECT_BY_POS)==false) continue;
+        string symbol = OrderSymbol();
+        if(StringFind(symbol, eaSymbol) == -1) continue;
+        eaTotal ++ ;
+    }
+    return eaTotal;
+}
 
 
 void OnChartEvent(const int id,
@@ -125,6 +154,17 @@ void OnChartEvent(const int id,
 
      }
   }
+
+int GetRandomOrderType() {
+    int random = MathRand(); // 用来确定方向的随机数，是多少无所谓。随机游走
+    int orderType = 0; // 0:buy，1:sell
+    if(random % 2 == 0) {
+        orderType = 0;
+    }else {
+        orderType = 1;
+    }
+    return orderType;
+}
 
 
 

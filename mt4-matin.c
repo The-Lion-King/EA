@@ -330,22 +330,22 @@ void CloseOrder(string closeType = "11111", ulong ticket = 10000, string symbol 
       if (res == false) Print("ERROR - Unable to close the order - ", OrderTicket(), " - ", GetLastError());
    }
 }
-//+--------------------------30分钟之内逆势涨跌超过20点------------------------------------------+
-//+--------------------------接下来30分钟则不开仓-------------------------------------------+
+//+--------------------------1分钟之内逆势涨跌超过20点------------------------------------------+
+//+--------------------------接下来1分钟则不开仓-------------------------------------------+
 void IsWaveTooMuch() {
   int orderType = GetOpenOrderType();
   postTime = TimeCurrent();
   postPrice = SymbolInfoDouble(eaSymbol, SYMBOL_BID); // 卖价
   // Print(eaSymbol, ":", "WAVE_POINT: ",WAVE_POINT);
   Print("time: ", postTime - preTime, ", or " + DoubleToStr((postTime - preTime)/ 60.0, 1), " mins, prePrice: ", prePrice, ", postPrice",  postPrice, ", diffPrice: ", DoubleToStr(MathAbs(postPrice - prePrice), 4));
-  // 30分钟之内逆势涨跌超过WAVE_POINT点，则接下来1小时不开仓
-  if(postTime - preTime < 60*30 && ((orderType == 0 && NormalizeDouble(prePrice - postPrice, 4) > WAVE_POINT ) || (orderType == 1 && NormalizeDouble(postPrice - prePrice, 4) > WAVE_POINT))) {
+  // 1分钟之内逆势涨跌超过WAVE_POINT点，则接下来1分钟不开仓
+  if(postTime - preTime < 60 && ((orderType == 0 && NormalizeDouble(prePrice - postPrice, 4) > WAVE_POINT ) || (orderType == 1 && NormalizeDouble(postPrice - prePrice, 4) > WAVE_POINT))) {
      isSleeping = true;
      preTime = postTime;
      prePrice = postPrice;
      Print(eaSymbol, ":", "Attention=========up and down is too much==============", MathAbs(postPrice - prePrice));
   } 
-  if(postTime - preTime > 60*30){
+  if(postTime - preTime > 60){
     isSleeping = false;
     preTime = postTime;
     prePrice = postPrice;
