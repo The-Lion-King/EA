@@ -15,11 +15,9 @@ const string DIVIDE_FLAG_UP_COMMENT = "DIVIDE_FLAG_UP_";
 const string DIVIDE_FLAG_DOWN_COMMENT = "DIVIDE_FLAG_DOWN_";
 const string DIVIDE_FLAG = "DIVIDE_FLAG";
 
-double floatProfit = 0.0; // 浮盈&浮亏
-// double historyProfit = 0.0; // 此轮历史盈利
-
 double upHistoryProfit = 0.0;
 double downHistoryProfit = 0.0;
+double totalHistoryProfit = 0.0;
 
 double maxLossPoint = 0; // 首单浮亏多少点
 double MINI_LOT = 0.01; // 最小仓位
@@ -28,10 +26,18 @@ double MINI_LOT = 0.01; // 最小仓位
 input double TACKPROFIT_POINT = 0; // 止盈点数
 input double WAVE_POINT = 0; // 波动多大开始加仓
 input double SOLVE_POINT = 0; // 首单波动多大开始对冲
-input double STARTLOT = 0.05; // 第一单手数大小
-input double SEPLOT = 0.05; // 间隔手数
+input double STARTLOT = 0.01; // 第一单手数大小
+input double SEPLOT = 0.01; // 间隔手数
 input int divideHolding = 30; // 分隔单持仓多久(s)
+// 为了防止EA意外盲目开单情况，做此限制。当停止开单确认无误后，再提高此数量
+input int SYMBOLLIMIT_TOTAL = 15; // 每个品种最多开多少单
+input int MAX_SPREAD = 60; // 点差大于多少不交易
+input int STOP_TRADE_MINUTES = 1; // 短时间内波动太大停止做单多久(分钟)
+input double HARVEST_RATE = 2; // Start hedging when profit is several times the loss
 
+input string divide2 = "===================="; // ==========间隔仓位调整==============
+input double STAGE_LOT_1 = 0.23; // 加仓间隔调整第一级->0.03||0.01
+input double STAGE_LOT_2 = 0.30; // 加仓间隔调整第二级->0.01
 
 string companyName = ""; // 外汇平台是哪家
 string eaSymbol = "";
@@ -57,22 +63,15 @@ int postTime = 0;
 string sendText = "init text";
 
 
-string buttonID2="昨日日最高";
-string buttonID3="昨日最低";
-string buttonID4="今日开盘";
-string buttonID5="今日最高";
-string buttonID6="今日最低";
-
-int IS_SHOW_PRICE_OBJECT = 1; // 是否显示自定义面板
-
 int eaSymbolUpTotal = 0;
 int eaSymbolDownTotal = 0;
+
+double MAX_LOSS = 0.0; // 最大亏损
 
 
 
  /*
-
- 双向马丁策略
+ 双马丁策略
  
  第一单随机开仓0.05
  间隔20点加仓，止盈13个点
@@ -107,11 +106,9 @@ int OnInit()
     // 初始化
     prePrice = SymbolInfoDouble(eaSymbol, SYMBOL_BID); // 卖价
     preTime = TimeCurrent();
-
-
-   if(IS_SHOW_PRICE_OBJECT == 1) {
-      InitPriceShowObject();
-   }
+    divideUpOnceFlag = false;
+    divideDownOnceFlag = false;
+    isSleeping = false;
 
 //---
    return(INIT_SUCCEEDED);
@@ -132,10 +129,22 @@ void OnTick()
        Print("NO WAVE_POINT AND TACKPROFIT_POINT, please SET!========================");
        return;
      }
-     PrintEARunningDays();
+
+     // 检查环境
+    if(CheckTheEnv(MAX_SPREAD) == false) {
+      return;
+    }
+
+    if(AccountProfit() < MAX_LOSS) {
+      MAX_LOSS = AccountProfit();
+    }
     
     GetEaSymbolTotal();
     Print("eaSymbolUpTotal=", eaSymbolUpTotal, ",eaSymbolDownTotal=", eaSymbolDownTotal);
+    if(eaSymbolDownTotal > SYMBOLLIMIT_TOTAL || eaSymbolUpTotal > SYMBOLLIMIT_TOTAL) {
+      Print("eaSymboltotal exceed the max, please SET!========================eaSymbolDownTotal=", eaSymbolDownTotal, ",eaSymbolUpTotal=", eaSymbolUpTotal);
+      return;
+    }
 
     if(eaSymbolUpTotal + eaSymbolDownTotal == 0) {
       eaSymbolDownTotal = 1; //非0就可以。解决初始化时方向单子只有一个方向问题
@@ -181,10 +190,11 @@ void OnTick()
    IsWaveTooMuch();
    upHistoryProfit = GetHistoryProfit(0);
    downHistoryProfit = GetHistoryProfit(1);
+   totalHistoryProfit = upHistoryProfit + downHistoryProfit;
+   Print("upHistoryProfit=", DoubleToStr(upHistoryProfit, 2), ", downHistoryProfit=",  DoubleToStr(downHistoryProfit, 2), ", totalHistoryProfit=", totalHistoryProfit);
+
    CheckOrders(0);
    CheckOrders(1);
-   CheckRecentDay();
-  // Print("===============upHistoryProfit=", DoubleToStr(upHistoryProfit, 4), ",downHistoryProfit=",  DoubleToStr(downHistoryProfit, 4));
   }
 
 
@@ -210,10 +220,10 @@ void GetEaSymbolTotal(){
 //+----------------------检查开仓单子--------------------------------------------+
 void CheckOrders(int inOrderType = 0){
    int total=OrdersTotal();
-   floatProfit = 0.0;
    int y = -1;
    double newOpenPrice = 0.0;
    double newOpenVolume = 0.0;
+   double maxVolume = 0.0;
    double newOpenProfit = 0.0;
    int newOpenOrderType = 0;
    double currentPrice =  SymbolInfoDouble(eaSymbol, SYMBOL_BID); // 卖价
@@ -224,7 +234,6 @@ void CheckOrders(int inOrderType = 0){
    string targetComment = inOrderType == 0 ? UP_COMMENT : DOWN_COMMENT;
    string newComment = "";
    string newSymbol = "";
-   double historyProfit = inOrderType == 0 ? upHistoryProfit : downHistoryProfit;
   for(int i=0;i<total;i++)
     {
    if(OrderSelect(i,SELECT_BY_POS)==false) continue;
@@ -238,41 +247,53 @@ void CheckOrders(int inOrderType = 0){
     newComment =  OrderComment();
  
      y ++;
-     if(StringFind(newComment, "ea") > -1) {
-        floatProfit = floatProfit + OrderProfit() + OrderSwap();
-     }
      int holdingTime = TimeCurrent() - OrderOpenTime(); // 秒
      if(StringFind(newComment, DIVIDE_FLAG) > -1 && holdingTime > divideHolding) { // 开始标识: 挂单，则delete； 1分钟
        CloseOrder("PART", OrderTicket());
        continue;
      }
 
+     if(newOpenVolume > maxVolume) {
+        maxVolume = newOpenVolume;
+      }
+
      if(y == 0) { // 首单浮亏绝对值的2倍<平仓盈利 ; 5分钟
        maxLossPoint = MathAbs(NormalizeDouble(currentPrice - newOpenPrice, 5));
-       if(newOpenProfit < 0 && maxLossPoint > SOLVE_POINT && historyProfit > MathAbs(newOpenProfit) * 2) {
+       if(newOpenProfit < 0 && maxLossPoint > SOLVE_POINT && totalHistoryProfit > MathAbs(newOpenProfit) * HARVEST_RATE) {
            CloseOrder("PART", OrderTicket());
            continue;
        }
      }
     }
-
-    Print(targetComment, "maxLossPoint=", DoubleToStr(maxLossPoint, 4));
-    Print(targetComment, "floatProfit=", DoubleToStr(floatProfit, 4));
-    Print(targetComment, "historyProfit=", DoubleToStr(historyProfit, 4));
+    Print(targetComment, "isSleeping=", isSleeping);
 
     if(isSleeping) { // 半小时内涨跌太多，停止做单
       return;
     }
 
-   Print("==================orderType=", inOrderType, ", newOpenPrice=", newOpenPrice, ", currentPrice=", currentPrice, ", diffPrice=", MathAbs(NormalizeDouble(currentPrice - newOpenPrice, 5)));
+    int rate = 1;
+    // xm微型账户。1手=100微型手
+    if(StringFind(eaSymbol, "micro") > -1 || StringFind(eaSymbol, "m#") > -1) {
+      rate = 100;
+    }
+
+    double r_SEPLOT = SEPLOT;
+    if(maxVolume > STAGE_LOT_1) {
+      r_SEPLOT = r_SEPLOT - 0.02 * rate;
+    }
+
+    if(maxVolume > STAGE_LOT_2) {
+      r_SEPLOT = r_SEPLOT - 0.02 * rate;
+    }
+
+   Print("max lots=", maxVolume, ", origin sep lot=", SEPLOT,  ", new sep lot=" + DoubleToStr(r_SEPLOT, 2), ", max loss=", DoubleToStr(MAX_LOSS, 2));
 
     if(newOpenProfit < 0 &&  MathAbs(NormalizeDouble(currentPrice - newOpenPrice, 5)) > WAVE_POINT ) { //如果当前价格与最近交易单子，亏损大于20个点
         double tp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + TACKPROFIT_POINT;  // buy
-        Print("**************************orderType=", inOrderType, ", newOpenProfit=", newOpenPrice, ", currentPrice=", currentPrice, ", diffPrice=", MathAbs(NormalizeDouble(currentPrice - newOpenPrice, 5)));
         if(inOrderType == 1) { // sell
           tp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - TACKPROFIT_POINT;
         }
-     openOrder(eaSymbol, inOrderType, newOpenVolume + SEPLOT, 0, tp, targetComment + MathCeil(newOpenVolume / SEPLOT + 1) + "_" +  eaSymbol); //  13个点止盈
+     openOrder(eaSymbol, inOrderType, newOpenVolume + r_SEPLOT, 0, tp, targetComment + MathCeil(newOpenVolume / SEPLOT + 1) + "_" +  eaSymbol); //  13个点止盈
     }
 }
 
@@ -301,6 +322,21 @@ double GetHistoryProfit(int inOrderType = 0){
   }
   return historyProfit;
 
+}
+
+//+----------------------检查环境(包括点差、时间)--------------------------------------------+
+bool CheckTheEnv(int maxSpread = 30) {
+  // 打印EA运行天数
+  PrintEARunningDays();
+
+  //点差扩大不开仓
+  double spread = MarketInfo(eaSymbol, MODE_SPREAD);
+  if(spread > maxSpread) { 
+    Print("the spread exceed the max================maxSpread=", maxSpread, ", now=", spread);
+    return false;
+  }
+
+  return true;
 }
 
 //+-----------------------开仓-------------------------------------------+
@@ -395,7 +431,7 @@ void IsWaveTooMuch() {
      prePrice = postPrice;
      Print(eaSymbol, ":", "Attention=========up and down is too much==============", MathAbs(postPrice - prePrice));
   } 
-  if(postTime - preTime > 60*60){
+  if(postTime - preTime > 60 * STOP_TRADE_MINUTES){
     isSleeping = false;
     preTime = postTime;
     prePrice = postPrice;
@@ -430,42 +466,4 @@ void PrintEARunningDays() {
       flag_EARunningDays = 0;
     }
    Print("account#",  AccountNumber() , ", EA is runing ", EARunningDays + " days");
-}
-
-
-
-void CheckRecentDay() {
-  double iHigh1 = iHigh(eaSymbol, PERIOD_D1, 1);
-  double iLow1 = iLow(eaSymbol, PERIOD_D1, 1);
-  double iOpen = iOpen(eaSymbol, PERIOD_D1, 0);
-  double iHigh = iHigh(eaSymbol, PERIOD_D1, 0);
-  double iLow = iLow(eaSymbol, PERIOD_D1, 0);
-  ObjectSetString(0, buttonID2, OBJPROP_TEXT,"昨日最高: " + DoubleToStr(iHigh1, 5));
-  ObjectSetString(0, buttonID3, OBJPROP_TEXT,"昨日最低: " + DoubleToStr(iLow1, 5));
-  ObjectSetString(0, buttonID4, OBJPROP_TEXT,"今日开盘: " + DoubleToStr(iOpen, 5) );
-  ObjectSetString(0, buttonID5, OBJPROP_TEXT,"今日最高: " + DoubleToStr(iHigh, 5) );
-  ObjectSetString(0, buttonID6, OBJPROP_TEXT,"今日最低: " + DoubleToStr(iLow, 5) );
-}
-
-void InitPriceShowObject() {
-   initObject(buttonID2, 50, 30);
-   initObject(buttonID3, 240, 30);
-   initObject(buttonID4, 430, 30);
-   initObject(buttonID5, 630, 30);
-   initObject(buttonID6, 830, 30);
-}
-
-void initObject(string objectId, int x, int y, int bx = 150, int by = 50) {
-
-  ObjectCreate(0,objectId,OBJ_BUTTON,0,1,1);
-  ObjectSetInteger(0,objectId,OBJPROP_COLOR,clrWhite);
-  ObjectSetInteger(0,objectId,OBJPROP_BGCOLOR,clrBlue);
-  ObjectSetInteger(0,objectId,OBJPROP_XDISTANCE, x);
-  ObjectSetInteger(0,objectId,OBJPROP_YDISTANCE, y);
-  ObjectSetInteger(0,objectId,OBJPROP_XSIZE, bx);
-  ObjectSetInteger(0,objectId,OBJPROP_YSIZE, by);
-  ObjectSetString(0,objectId,OBJPROP_FONT,"Arial");
-  ObjectSetString(0,objectId,OBJPROP_TEXT,"--");
-  ObjectSetInteger(0,objectId,OBJPROP_FONTSIZE,8);
-  ObjectSetInteger(0,objectId,OBJPROP_SELECTABLE,0);
 }
