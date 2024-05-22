@@ -26,7 +26,7 @@ input double SOLVE_POINT = 0; // 首单波动多大开始对冲
 input int SYMBOLLIMIT_TOTAL = 10; // 每个品种最多开多少单
 input int MAX_SPREAD = 30; // 点差大于多少不交易
 
-
+input double MAX_VOL = 0.2;
 input double STARTLOT = 0.05; // 第一单手数大小
 input double SEPLOT = 0.05; // 间隔手数
 input int divideHolding = 30; // 分隔单持仓多久(s)
@@ -165,7 +165,10 @@ int GetEaSymbolTotal(){
         if(OrderSelect(i,SELECT_BY_POS)==false) continue;
         string symbol = OrderSymbol();
         if(StringFind(symbol, eaSymbol) == -1) continue;
-        eaTotal ++ ;
+        string comment =  OrderComment();
+        if(StringFind(comment, "ea") > -1) {
+            eaTotal ++ ;
+        }
     }
     return eaTotal;
 }
@@ -180,7 +183,7 @@ void CheckOrders(){
     double newOpenVolume = 0.0;
     double newOpenProfit = 0.0;
     double newOpenOrderType = 0;
-    double currentPrice = SymbolInfoDouble(eaSymbol, SYMBOL_BID);; // 卖，用BID价格对比
+    double currentPrice = SymbolInfoDouble(eaSymbol, SYMBOL_BID); // 卖，用BID价格对
     for(int i=0;i<total;i++)
     {
         if(OrderSelect(i,SELECT_BY_POS)==false) continue;
@@ -189,13 +192,12 @@ void CheckOrders(){
         y ++;
         string comment =  OrderComment();
         if(StringFind(comment, "ea") > -1) {
-            floatProfit = floatProfit + OrderProfit() + OrderSwap();
+             floatProfit = floatProfit + OrderProfit() + OrderSwap();
+             newOpenVolume = OrderLots();
+             newOpenOrderType = OrderType();
         }
-
-        newOpenOrderType = OrderType();
-        newOpenVolume = OrderLots();
-        newOpenPrice = OrderOpenPrice();
         newOpenProfit = OrderProfit() + OrderSwap();
+        newOpenPrice = OrderOpenPrice();
 
         int holdingTime = TimeCurrent() - OrderOpenTime(); // 秒
         if(StringFind(comment, DIVIDE_FLAG_COMMENT + eaSymbol) > -1 && holdingTime > divideHolding) { // 开始标识: 挂单，则delete； 1分钟
@@ -217,21 +219,56 @@ void CheckOrders(){
     }
 
     double lot = SEPLOT;
+    double vol = 0.0;
+    double initWave = WAVE_POINT;
+    double resType = 0;
+    //double balance = AccountEquity();
+    //if(balance > 8000){
+      //  lot = 0.02;
+   // }
+    //if(balance > 10000){
+      //  lot = 0.03;
+    //}
+    // 如果亏损超过100美金 加仓幅度减去0.01
     if(floatProfit < -1000){
-        lot = lot - 0.01
+        lot = lot + 0.01;
     }
     if(floatProfit < -2000){
-        lot = lot - 0.01
+        lot = lot + 0.01;
     }
+    if(floatProfit < -5000){
+        lot = 0.01;
+    }
+//
+//      if(floatProfit < -1000){
+//          initWave = initWave * 1.5;
+//      } else if(floatProfit < -2000){
+//          initWave = initWave * 2.5;
+//      }
+
     if(newOpenOrderType == 0) { // 买，用ASK价格对比
         currentPrice =  SymbolInfoDouble(eaSymbol, SYMBOL_ASK); // 买价
+        resType = 1;
     }
-    if(newOpenProfit < 0 &&  MathAbs(NormalizeDouble(currentPrice - newOpenPrice, 4)) > WAVE_POINT ) { //如果当前价格与最近交易单子，亏损大于20个点
+    vol = newOpenVolume + lot;
+    if(newOpenProfit < 0 && MathAbs(NormalizeDouble(currentPrice - newOpenPrice, 4)) > initWave ) { //如果当前价格与最近交易单子，亏损大于20个点
         double tp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + TACKPROFIT_POINT;  // buy
+//         double reserveTp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - TACKPROFIT_POINT;  // sell
+//         double reserveSl = SymbolInfoDouble(eaSymbol, SYMBOL_BID) + 0.018;
         if(newOpenOrderType == 1) { // sell
             tp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - TACKPROFIT_POINT;
+//             reserveTp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + TACKPROFIT_POINT;  // sell
+//             reserveSl = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) - 0.018;
+            resType = 0;
         }
-        openOrder(eaSymbol, newOpenOrderType, newOpenVolume + lot, 0, tp, "ea_"  + MathCeil(newOpenVolume / lot + 1) + "_" +  eaSymbol); //  13个点止盈
+
+//         if(vol > MAX_VOL){
+//             //vol = MAX_VOL;
+//             openOrder(eaSymbol, resType, vol, 0, reserveTp, "resOrder"  + MathCeil(vol / lot + 1) + "_" +  eaSymbol);
+//         } else {
+//
+//        }
+        openOrder(eaSymbol, newOpenOrderType, vol, 0, tp, "ea_"  + MathCeil(newOpenVolume / lot + 1) + "_" +  eaSymbol); //  13个点止盈
     }
 }
 
@@ -248,7 +285,11 @@ void CheckHistoryOrders(){
         int orderType = OrderType();
         if(StringFind(comment, DIVIDE_FLAG_COMMENT + eaSymbol) > -1) { //找到开始标识，则停止计算历史盈利
             break;
-        } else if(StringFind(symbol, eaSymbol) > -1 && StringFind(comment, "ea", 0) > -1) {
+        }
+//         else if(StringFind(symbol, eaSymbol) > -1 && StringFind(comment, "ea", 0) > -1) {
+//             historyProfit = historyProfit + OrderProfit() + OrderSwap();
+//         }
+ else if(StringFind(symbol, eaSymbol) > -1) {
             historyProfit = historyProfit + OrderProfit() + OrderSwap();
         }
     }
