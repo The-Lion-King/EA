@@ -200,7 +200,7 @@ void OnTick()
 
     if(eaSymbolUpTotal == 0){
         double tp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + TACKPROFIT_POINT;  // 买价
-        double divTp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + TACKPROFIT_POINT + divProfit_point;  // 买价
+        double divTp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + divProfit_point;  // 买价
         int orderType = 0;
         openOrder(eaSymbol, orderType, MINI_LOT, 0, divTp, DIVIDE_FLAG_UP_COMMENT + eaSymbol); // buy limit挂单作为开始标识
         double lot = STARTLOT;
@@ -215,7 +215,7 @@ void OnTick()
     if(eaSymbolDownTotal == 0){
         int orderType = 1;
         double tp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - TACKPROFIT_POINT;
-        double divTp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - TACKPROFIT_POINT - divProfit_point;
+        double divTp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - divProfit_point;
         openOrder(eaSymbol, orderType, MINI_LOT, 0, divTp, DIVIDE_FLAG_DOWN_COMMENT + eaSymbol); // buy limit挂单作为开始标识
         double lot = STARTLOT;
         if(eaSymbolUpTotal > 6 && upLastLot > 0.2){ //如果现存多单大于6单，并且最后一单大于0.2 那就把空单首次开单double
