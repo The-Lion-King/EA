@@ -226,7 +226,7 @@ void OnTick()
             openOrder(eaSymbol, orderType, lot, 0, tp, DOWN_COMMENT + "1_" + eaSymbol); // sell
             //openOrder(eaSymbol, orderType, STARTLOT, 0, tp, DOWN_COMMENT + "1_" + eaSymbol); // sell
             divideDownOnceFlag = false;
-        } {
+        } else {
             openOrder(eaSymbol, orderType, MINI_LOT, 0, 0, DIVIDE_FLAG_DOWN_COMMENT + eaSymbol); // buy limit挂单作为开始标识
             divideDownOnceFlag = true;
         }
