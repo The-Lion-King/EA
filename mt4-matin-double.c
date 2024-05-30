@@ -29,7 +29,7 @@ input double SOLVE_POINT = 0; // 首单波动多大开始对冲
 input double STARTLOT = 0.01; // 第一单手数大小
 input double SEPLOT = 0.01; // 间隔手数
 input int divideHolding = 30; // 分隔单持仓多久(s)
-input int divProfit_point = 0.0001;
+input double divProfit_point = 0.0001;
 // 为了防止EA意外盲目开单情况，做此限制。当停止开单确认无误后，再提高此数量
 input int SYMBOLLIMIT_TOTAL = 15; // 每个品种最多开多少单
 input int MAX_SPREAD = 60; // 点差大于多少不交易
