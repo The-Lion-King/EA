@@ -29,6 +29,7 @@ input double SOLVE_POINT = 0; // 首单波动多大开始对冲
 input double STARTLOT = 0.01; // 第一单手数大小
 input double SEPLOT = 0.01; // 间隔手数
 input int divideHolding = 30; // 分隔单持仓多久(s)
+input int divProfit_point = 0.0001;
 // 为了防止EA意外盲目开单情况，做此限制。当停止开单确认无误后，再提高此数量
 input int SYMBOLLIMIT_TOTAL = 15; // 每个品种最多开多少单
 input int MAX_SPREAD = 60; // 点差大于多少不交易
@@ -199,37 +200,30 @@ void OnTick()
 
     if(eaSymbolUpTotal == 0){
         double tp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + TACKPROFIT_POINT;  // 买价
+        double divTp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + TACKPROFIT_POINT + divProfit_point;  // 买价
         int orderType = 0;
-        if(divideUpOnceFlag) {
-            double lot = STARTLOT;
-            if(eaSymbolDownTotal > 6 && downLastLot > 0.2){ //如果现存空单大于6单，并且最后一单大于0.2 那就把多单首次开单double
-                lot = STARTLOT * 2;
-            }
-            // openOrder(eaSymbol, orderType, STARTLOT, 0, tp, UP_COMMENT + "1_" + eaSymbol); // buy
-            openOrder(eaSymbol, orderType, lot, 0, tp, UP_COMMENT + "1_" + eaSymbol); // buy
-            divideUpOnceFlag = false;
-        } else {
-            openOrder(eaSymbol, orderType, MINI_LOT, 0, 0, DIVIDE_FLAG_UP_COMMENT + eaSymbol); // buy limit挂单作为开始标识
-            divideUpOnceFlag = true;
+        openOrder(eaSymbol, orderType, MINI_LOT, 0, divTp, DIVIDE_FLAG_UP_COMMENT + eaSymbol); // buy limit挂单作为开始标识
+        double lot = STARTLOT;
+        if(eaSymbolDownTotal > 6 && downLastLot > 0.2){ //如果现存空单大于6单，并且最后一单大于0.2 那就把多单首次开单double
+            lot = STARTLOT * 2;
         }
+        // openOrder(eaSymbol, orderType, STARTLOT, 0, tp, UP_COMMENT + "1_" + eaSymbol); // buy
+        openOrder(eaSymbol, orderType, lot, 0, tp, UP_COMMENT + "1_" + eaSymbol); // buy
 
     }
 
     if(eaSymbolDownTotal == 0){
         int orderType = 1;
         double tp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - TACKPROFIT_POINT;
-        if(divideDownOnceFlag) {
-            double lot = STARTLOT;
-            if(eaSymbolUpTotal > 6 && upLastLot > 0.2){ //如果现存多单大于6单，并且最后一单大于0.2 那就把空单首次开单double
-                lot = STARTLOT * 2;
-            }
-            openOrder(eaSymbol, orderType, lot, 0, tp, DOWN_COMMENT + "1_" + eaSymbol); // sell
-            //openOrder(eaSymbol, orderType, STARTLOT, 0, tp, DOWN_COMMENT + "1_" + eaSymbol); // sell
-            divideDownOnceFlag = false;
-        } else {
-            openOrder(eaSymbol, orderType, MINI_LOT, 0, 0, DIVIDE_FLAG_DOWN_COMMENT + eaSymbol); // buy limit挂单作为开始标识
-            divideDownOnceFlag = true;
+        double divTp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - TACKPROFIT_POINT - divProfit_point;
+        openOrder(eaSymbol, orderType, MINI_LOT, 0, divTp, DIVIDE_FLAG_DOWN_COMMENT + eaSymbol); // buy limit挂单作为开始标识
+        double lot = STARTLOT;
+        if(eaSymbolUpTotal > 6 && upLastLot > 0.2){ //如果现存多单大于6单，并且最后一单大于0.2 那就把空单首次开单double
+            lot = STARTLOT * 2;
         }
+        openOrder(eaSymbol, orderType, lot, 0, tp, DOWN_COMMENT + "1_" + eaSymbol); // sell
+        //openOrder(eaSymbol, orderType, STARTLOT, 0, tp, DOWN_COMMENT + "1_" + eaSymbol); // sell
+        divideDownOnceFlag = false;
     }
 
 
