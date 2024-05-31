@@ -23,22 +23,22 @@ double maxLossPoint = 0; // 首单浮亏多少点
 double MINI_LOT = 0.01; // 最小仓位
 
 // 换账户的话，下面这几个个常量需要修改
-input double TACKPROFIT_POINT = 0; // 止盈点数
-input double WAVE_POINT = 0; // 波动多大开始加仓
-input double SOLVE_POINT = 0; // 首单波动多大开始对冲
-input double STARTLOT = 0.01; // 第一单手数大小
-input double SEPLOT = 0.01; // 间隔手数
+input double TACKPROFIT_POINT = 0.0016; // 止盈点数
+input double WAVE_POINT = 0.002; // 波动多大开始加仓
+input double SOLVE_POINT = 0.01; // 首单波动多大开始对冲
+input double STARTLOT = 0.03; // 第一单手数大小
+input double SEPLOT = 0.03; // 间隔手数
 input int divideHolding = 30; // 分隔单持仓多久(s)
 input double divProfit_point = 0.0001;
 // 为了防止EA意外盲目开单情况，做此限制。当停止开单确认无误后，再提高此数量
-input int SYMBOLLIMIT_TOTAL = 15; // 每个品种最多开多少单
+input int SYMBOLLIMIT_TOTAL = 20; // 每个品种最多开多少单
 input int MAX_SPREAD = 60; // 点差大于多少不交易
 input int STOP_TRADE_MINUTES = 1; // 短时间内波动太大停止做单多久(分钟)
 input double HARVEST_RATE = 2; // Start hedging when profit is several times the loss
 
 input string divide2 = "===================="; // ==========间隔仓位调整==============
-input double STAGE_LOT_1 = 0.23; // 加仓间隔调整第一级->0.03||0.01
-input double STAGE_LOT_2 = 0.30; // 加仓间隔调整第二级->0.01
+//input double STAGE_LOT_1 = 0.23; // 加仓间隔调整第一级->0.03||0.01
+//input double STAGE_LOT_2 = 0.30; // 加仓间隔调整第二级->0.01
 
 string companyName = ""; // 外汇平台是哪家
 string eaSymbol = "";
