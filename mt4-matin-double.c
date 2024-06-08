@@ -19,8 +19,6 @@ double upHistoryProfit = 0.0;
 double downHistoryProfit = 0.0;
 double totalHistoryProfit = 0.0;
 
-double oldHistory = 0.0;
-
 double maxLossPoint = 0; // 首单浮亏多少点
 double MINI_LOT = 0.01; // 最小仓位
 
