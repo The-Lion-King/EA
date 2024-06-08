@@ -15,9 +15,6 @@ const string DIVIDE_FLAG_UP_COMMENT = "DIVIDE_FLAG_UP_";
 const string DIVIDE_FLAG_DOWN_COMMENT = "DIVIDE_FLAG_DOWN_";
 const string DIVIDE_FLAG = "DIVIDE_FLAG";
 
-
-const string DIVIDE_FLAG_COMMENT = "DIVIDE_FLAG_"; //老的分割标识
-
 double upHistoryProfit = 0.0;
 double downHistoryProfit = 0.0;
 double totalHistoryProfit = 0.0;
@@ -243,8 +240,7 @@ void OnTick()
     // IsWaveTooMuch();
     upHistoryProfit = GetHistoryProfit(0);
     downHistoryProfit = GetHistoryProfit(1);
-    oldHistory = GetHistoryOldProfit();
-    totalHistoryProfit = upHistoryProfit + downHistoryProfit + oldHistory;
+    totalHistoryProfit = upHistoryProfit + downHistoryProfit;
     Print("upHistoryProfit=", DoubleToStr(upHistoryProfit, 2), ", downHistoryProfit=",  DoubleToStr(downHistoryProfit, 2), ", totalHistoryProfit=", totalHistoryProfit);
 
     CheckOrders(0);
@@ -380,27 +376,6 @@ void CheckOrders(int inOrderType = 0){
         }
         openOrder(eaSymbol, inOrderType, newOpenVolume + r_SEPLOT, 0, tp, targetComment + MathCeil(newOpenVolume / SEPLOT + 1) + "_" +  eaSymbol); //  13个点止盈
     }
-}
-
-//兼容老的数据
-double GetHistoryOldProfit(){
-    int total=OrdersHistoryTotal();
-    double historyProfit = 0.0;
-    for(int i = total-1; i >= 0; i --)
-    {
-        if(OrderSelect(i, SELECT_BY_POS, MODE_HISTORY)==false) continue;
-        string symbol = OrderSymbol();
-        if(StringFind(symbol, eaSymbol) == -1) continue;
-        string comment =  OrderComment();
-        if(StringFind(comment, UP_COMMENT) > -1 || StringFind(comment, DOWN_COMMENT) > -1) continue;
-        int orderType = OrderType();
-        if(StringFind(comment, DIVIDE_FLAG_COMMENT + eaSymbol) > -1) { //找到开始标识，则停止计算历史盈利
-            break;
-        } else if(StringFind(symbol, eaSymbol) > -1 && StringFind(comment, "ea", 0) > -1) {
-            historyProfit = historyProfit + OrderProfit() + OrderSwap();
-        }
-    }
-    return historyProfit;
 }
 
 //+-----------------------检查历史单子-------------------------------------------+
