@@ -347,6 +347,7 @@ void CheckOrders(int inOrderType = 0){
 //    }
 //
     double r_SEPLOT = SEPLOT;
+    double r_WAVE_POINT = WAVE_POINT;
 //    if(maxVolume > STAGE_LOT_1) {
 //        r_SEPLOT = r_SEPLOT - 0.02 * rate;
 //    }
@@ -365,9 +366,22 @@ void CheckOrders(int inOrderType = 0){
         r_SEPLOT = r_SEPLOT - 0.01;
     }
 
+    if(r_WAVE_POINT <= -1000) {
+        r_WAVE_POINT = r_WAVE_POINT * 1.5;
+    }
+    if(r_WAVE_POINT <= -1600) {
+        r_WAVE_POINT = r_WAVE_POINT * 2;
+        r_SEPLOT = r_SEPLOT + 0.01;
+    }
+    if(r_WAVE_POINT <= -2200) {
+        r_WAVE_POINT = r_WAVE_POINT * 3;
+        r_SEPLOT = r_SEPLOT + 0.01;
+    }
+
+
     Print("max lots=", maxVolume, ", origin sep lot=", SEPLOT,  ", new sep lot=" + DoubleToStr(r_SEPLOT, 2), ", max loss=", DoubleToStr(MAX_LOSS, 2));
 
-    if(newOpenProfit < 0 &&  MathAbs(NormalizeDouble(currentPrice - newOpenPrice, 5)) > WAVE_POINT ) { //如果当前价格与最近交易单子，亏损大于20个点
+    if(newOpenProfit < 0 &&  MathAbs(NormalizeDouble(currentPrice - newOpenPrice, 5)) > r_WAVE_POINT ) { //如果当前价格与最近交易单子，亏损大于20个点
         double tp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + TACKPROFIT_POINT;  // buy
         if(inOrderType == 1) { // sell
             tp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - TACKPROFIT_POINT;
