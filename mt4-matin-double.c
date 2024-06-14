@@ -366,14 +366,14 @@ void CheckOrders(int inOrderType = 0){
         r_SEPLOT = r_SEPLOT - 0.01;
     }
 
-    if(r_WAVE_POINT <= -1000) {
+    if(floatProfit <= -1000) {
         r_WAVE_POINT = r_WAVE_POINT * 1.5;
     }
-    if(r_WAVE_POINT <= -1600) {
+    if(floatProfit <= -1600) {
         r_WAVE_POINT = r_WAVE_POINT * 2;
         r_SEPLOT = r_SEPLOT + 0.01;
     }
-    if(r_WAVE_POINT <= -2200) {
+    if(floatProfit <= -2200) {
         r_WAVE_POINT = r_WAVE_POINT * 3;
         r_SEPLOT = r_SEPLOT + 0.01;
     }
