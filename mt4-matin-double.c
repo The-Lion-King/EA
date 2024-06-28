@@ -24,7 +24,8 @@ double MINI_LOT = 0.01; // 最小仓位
 
 // 换账户的话，下面这几个个常量需要修改
 input double TACKPROFIT_POINT = 0.0016; // 止盈点数
-input double WAVE_POINT = 0.002; // 波动多大开始加仓
+input double WAVE_POINT = 0.002; // 波动多大开始加仓 空单波动加仓
+input double CALL_WAVE_POINT = 0.002;  // 波动多大开始加仓 多单波动加仓
 input double SOLVE_POINT = 0.01; // 首单波动多大开始对冲
 input double STARTLOT = 0.03; // 第一单手数大小
 input double SEPLOT = 0.03; // 间隔手数
@@ -347,7 +348,11 @@ void CheckOrders(int inOrderType = 0){
 //    }
 //
     double r_SEPLOT = SEPLOT;
-    double r_WAVE_POINT = WAVE_POINT;
+    double r_WAVE_POINT = WAVE_POINT; //卖单的加仓点数
+
+    if(inOrderType == 0){   //买单的加仓点数
+        r_WAVE_POINT = CALL_WAVE_POINT;
+    }
 //    if(maxVolume > STAGE_LOT_1) {
 //        r_SEPLOT = r_SEPLOT - 0.02 * rate;
 //    }
@@ -366,17 +371,8 @@ void CheckOrders(int inOrderType = 0){
         r_SEPLOT = r_SEPLOT - 0.01;
     }
 
-    if(floatProfit <= -1000) {
-        r_WAVE_POINT = r_WAVE_POINT * 1.5;
-    }
-    if(floatProfit <= -1600) {
-        r_WAVE_POINT = r_WAVE_POINT * 2;
-        r_SEPLOT = r_SEPLOT + 0.01;
-    }
-    if(floatProfit <= -2200) {
-        r_WAVE_POINT = r_WAVE_POINT * 3;
-        r_SEPLOT = r_SEPLOT + 0.01;
-    }
+
+
 
 
     Print("max lots=", maxVolume, ", origin sep lot=", SEPLOT,  ", new sep lot=" + DoubleToStr(r_SEPLOT, 2), ", max loss=", DoubleToStr(MAX_LOSS, 2));
