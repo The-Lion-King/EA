@@ -206,7 +206,7 @@ void OnTick()
         int orderType = 0;
         openOrder(eaSymbol, orderType, MINI_LOT, 0, divTp, DIVIDE_FLAG_UP_COMMENT + eaSymbol); // buy limit挂单作为开始标识
         double lot = STARTLOT;
-        if(eaSymbolDownTotal > 6 && downLastLot > 0.2){ //如果现存空单大于6单，并且最后一单大于0.2 那就把多单首次开单double
+        if(eaSymbolDownTotal > 6){ //如果现存空单大于6单 那就把多单首次开单double
             lot = STARTLOT * 2;
         }
         // openOrder(eaSymbol, orderType, STARTLOT, 0, tp, UP_COMMENT + "1_" + eaSymbol); // buy
@@ -220,7 +220,7 @@ void OnTick()
         double divTp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - divProfit_point;
         openOrder(eaSymbol, orderType, MINI_LOT, 0, divTp, DIVIDE_FLAG_DOWN_COMMENT + eaSymbol); // buy limit挂单作为开始标识
         double lot = STARTLOT;
-        if(eaSymbolUpTotal > 6 && upLastLot > 0.2){ //如果现存多单大于6单，并且最后一单大于0.2 那就把空单首次开单double
+        if(eaSymbolUpTotal > 6 ){ //如果现存多单大于6单 那就把空单首次开单double
             lot = STARTLOT * 2;
         }
         openOrder(eaSymbol, orderType, lot, 0, tp, DOWN_COMMENT + "1_" + eaSymbol); // sell
