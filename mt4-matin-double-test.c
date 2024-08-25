@@ -15,20 +15,17 @@ const string DIVIDE_FLAG_UP_COMMENT = "DIVIDE_FLAG_UP_";
 const string DIVIDE_FLAG_DOWN_COMMENT = "DIVIDE_FLAG_DOWN_";
 const string DIVIDE_FLAG = "DIVIDE_FLAG";
 
-const string DIVIDE_FLAG_COMMENT = "DIVIDE_FLAG_"; //老的分割标识
-
 double upHistoryProfit = 0.0;
 double downHistoryProfit = 0.0;
 double totalHistoryProfit = 0.0;
-
-double oldHistory = 0.0;
 
 double maxLossPoint = 0; // 首单浮亏多少点
 double MINI_LOT = 0.01; // 最小仓位
 
 // 换账户的话，下面这几个个常量需要修改
 input double TACKPROFIT_POINT = 0.0016; // 止盈点数
-input double WAVE_POINT = 0.002; // 波动多大开始加仓
+input double WAVE_POINT = 0.002; // 波动多大开始加仓 空单波动加仓
+input double CALL_WAVE_POINT = 0.002;  // 波动多大开始加仓 多单波动加仓
 input double SOLVE_POINT = 0.01; // 首单波动多大开始对冲
 input double STARTLOT = 0.03; // 第一单手数大小
 input double SEPLOT = 0.03; // 间隔手数
@@ -71,6 +68,9 @@ string sendText = "init text";
 int eaSymbolUpTotal = 0;
 int eaSymbolDownTotal = 0;
 
+int eaSymbolUpExceptDivTotal = 0;
+int eaSymbolDownExceptDivTotal = 0;
+
 double MAX_LOSS = 0.0; // 最大亏损
 
 double upLastLot = 0.0; // 多单最后一单的lot
@@ -109,6 +109,8 @@ int OnInit()
 
     MINI_LOT = MarketInfo(eaSymbol, MODE_MINLOT); // 最小仓位
 
+    eaSymbolUpExceptDivTotal = 0;
+    eaSymbolUpExceptDivTotal = 0;
 
     eaSymbol = Symbol();
 
@@ -135,7 +137,7 @@ void OnDeinit(const int reason)
 void OnTick()
 {
     if(WAVE_POINT == 0 || TACKPROFIT_POINT == 0 || SOLVE_POINT == 0) {
-        Print("NO WAVE_POINT AND TACKPROFIT_POINT, please SET!========================");
+        // Print("NO WAVE_POINT AND TACKPROFIT_POINT, please SET!========================");
         return;
     }
 
@@ -150,9 +152,10 @@ void OnTick()
 
     GetEaSymbolTotal();
     GetLastOrderNum();
-    Print("eaSymbolUpTotal=", eaSymbolUpTotal, ",eaSymbolDownTotal=", eaSymbolDownTotal);
+    Print("upinit====",eaSymbolUpExceptDivTotal);
+    //Print("eaSymbolUpTotal=", eaSymbolUpTotal, ",eaSymbolDownTotal=", eaSymbolDownTotal);
     if(eaSymbolDownTotal > SYMBOLLIMIT_TOTAL || eaSymbolUpTotal > SYMBOLLIMIT_TOTAL) {
-        Print("eaSymboltotal exceed the max, please SET!========================eaSymbolDownTotal=", eaSymbolDownTotal, ",eaSymbolUpTotal=", eaSymbolUpTotal);
+        //  Print("eaSymboltotal exceed the max, please SET!========================eaSymbolDownTotal=", eaSymbolDownTotal, ",eaSymbolUpTotal=", eaSymbolUpTotal);
         return;
     }
 
@@ -203,13 +206,30 @@ void OnTick()
 //        }
 //    }
 
-    if(eaSymbolUpTotal == 0){
+    if((eaSymbolDownTotal + eaSymbolUpTotal) == 0) {
+        int orderType = GetRandomOrderType();
+        double tp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + TACKPROFIT_POINT;  // 买价
+        string div = DIVIDE_FLAG_UP_COMMENT;
+        string comment = UP_COMMENT;
+        if(orderType == 1) { // sell
+            div = DIVIDE_FLAG_DOWN_COMMENT;
+            comment = DOWN_COMMENT;
+            tp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - TACKPROFIT_POINT;
+        }
+
+
+        openOrder(eaSymbol, orderType, MINI_LOT, 0, tp, div + eaSymbol); // buy limit挂单作为开始标识
+        openOrder(eaSymbol, orderType, STARTLOT, 0, tp, comment + "1_" + eaSymbol); // buy
+    }
+
+    if( eaSymbolDownExceptDivTotal > 1 && eaSymbolUpTotal == 0){
+        Print("eaSymbolDownTotalExceptDiv=",eaSymbolDownExceptDivTotal);
         double tp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + TACKPROFIT_POINT;  // 买价
         double divTp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + divProfit_point;  // 买价
         int orderType = 0;
         openOrder(eaSymbol, orderType, MINI_LOT, 0, divTp, DIVIDE_FLAG_UP_COMMENT + eaSymbol); // buy limit挂单作为开始标识
         double lot = STARTLOT;
-        if(eaSymbolDownTotal > 6 && downLastLot > 0.2){ //如果现存空单大于6单，并且最后一单大于0.2 那就把多单首次开单double
+        if(eaSymbolDownTotal >= 3 || downLastLot > 0.2){ //如果现存空单大于6单 那就把多单首次开单double
             lot = STARTLOT * 2;
         }
         // openOrder(eaSymbol, orderType, STARTLOT, 0, tp, UP_COMMENT + "1_" + eaSymbol); // buy
@@ -217,13 +237,14 @@ void OnTick()
 
     }
 
-    if(eaSymbolDownTotal == 0){
+    if(eaSymbolUpExceptDivTotal > 1 && eaSymbolDownTotal == 0){
         int orderType = 1;
+        Print("eaSymbolUpTotalExceptDiv=",eaSymbolUpExceptDivTotal);
         double tp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - TACKPROFIT_POINT;
         double divTp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - divProfit_point;
         openOrder(eaSymbol, orderType, MINI_LOT, 0, divTp, DIVIDE_FLAG_DOWN_COMMENT + eaSymbol); // buy limit挂单作为开始标识
         double lot = STARTLOT;
-        if(eaSymbolUpTotal > 6 && upLastLot > 0.2){ //如果现存多单大于6单，并且最后一单大于0.2 那就把空单首次开单double
+        if(eaSymbolUpTotal >= 3 || upLastLot > 0.2){ //如果现存多单大于6单 那就把空单首次开单double
             lot = STARTLOT * 2;
         }
         openOrder(eaSymbol, orderType, lot, 0, tp, DOWN_COMMENT + "1_" + eaSymbol); // sell
@@ -242,12 +263,23 @@ void OnTick()
     // IsWaveTooMuch();
     upHistoryProfit = GetHistoryProfit(0);
     downHistoryProfit = GetHistoryProfit(1);
-    oldHistory = GetHistoryOldProfit();
-    totalHistoryProfit = upHistoryProfit + downHistoryProfit + oldHistory;
-    Print("upHistoryProfit=", DoubleToStr(upHistoryProfit, 2), ", downHistoryProfit=",  DoubleToStr(downHistoryProfit, 2), ", totalHistoryProfit=", totalHistoryProfit);
+    totalHistoryProfit = upHistoryProfit + downHistoryProfit;
+    // Print("upHistoryProfit=", DoubleToStr(upHistoryProfit, 2), ", downHistoryProfit=",  DoubleToStr(downHistoryProfit, 2), ", totalHistoryProfit=", totalHistoryProfit);
 
     CheckOrders(0);
     CheckOrders(1);
+}
+
+//+--------------------------随机获取做单方向-------------------------------------------+
+int GetRandomOrderType() {
+    int random = MathRand(); // 用来确定方向的随机数，是多少无所谓。随机游走
+    int orderType = 0; // 0:buy，1:sell
+    if(random % 2 == 0) {
+        orderType = 0;
+    }else {
+        orderType = 1;
+    }
+    return orderType;
 }
 
 
@@ -273,16 +305,27 @@ void GetEaSymbolTotal(){
     int total = OrdersTotal();
     eaSymbolUpTotal = 0;
     eaSymbolDownTotal = 0;
+    eaSymbolUpExceptDivTotal = 0;
+    eaSymbolDownExceptDivTotal = 0;
     for(int i=0;i<total;i++)
     {
         if(OrderSelect(i,SELECT_BY_POS)==false) continue;
         string symbol = OrderSymbol();
         int orderType = OrderType();
         if(StringFind(symbol, eaSymbol) == -1) continue;
+        string comment =  OrderComment();
         if(orderType == 0) { // up
             eaSymbolUpTotal ++;
+            if(StringFind(comment, UP_COMMENT) > -1){
+                Print("up====",eaSymbolUpExceptDivTotal);
+                eaSymbolUpExceptDivTotal ++;
+            }
         } else if (orderType == 1){
             eaSymbolDownTotal ++;
+            if(StringFind(comment, DOWN_COMMENT) > -1){
+                Print("down====",eaSymbolDownExceptDivTotal);
+                eaSymbolDownExceptDivTotal ++;
+            }
         }
     }
 }
@@ -352,6 +395,11 @@ void CheckOrders(int inOrderType = 0){
 //    }
 //
     double r_SEPLOT = SEPLOT;
+    double r_WAVE_POINT = WAVE_POINT; //卖单的加仓点数
+
+    if(inOrderType == 0){   //买单的加仓点数
+        r_WAVE_POINT = CALL_WAVE_POINT;
+    }
 //    if(maxVolume > STAGE_LOT_1) {
 //        r_SEPLOT = r_SEPLOT - 0.02 * rate;
 //    }
@@ -370,38 +418,19 @@ void CheckOrders(int inOrderType = 0){
         r_SEPLOT = r_SEPLOT - 0.01;
     }
 
-    Print("max lots=", maxVolume, ", origin sep lot=", SEPLOT,  ", new sep lot=" + DoubleToStr(r_SEPLOT, 2), ", max loss=", DoubleToStr(MAX_LOSS, 2));
 
-    if(newOpenProfit < 0 &&  MathAbs(NormalizeDouble(currentPrice - newOpenPrice, 5)) > WAVE_POINT ) { //如果当前价格与最近交易单子，亏损大于20个点
+
+
+
+    //  Print("max lots=", maxVolume, ", origin sep lot=", SEPLOT,  ", new sep lot=" + DoubleToStr(r_SEPLOT, 2), ", max loss=", DoubleToStr(MAX_LOSS, 2));
+
+    if(newOpenProfit < 0 &&  MathAbs(NormalizeDouble(currentPrice - newOpenPrice, 5)) > r_WAVE_POINT ) { //如果当前价格与最近交易单子，亏损大于20个点
         double tp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + TACKPROFIT_POINT;  // buy
         if(inOrderType == 1) { // sell
             tp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - TACKPROFIT_POINT;
         }
         openOrder(eaSymbol, inOrderType, newOpenVolume + r_SEPLOT, 0, tp, targetComment + MathCeil(newOpenVolume / SEPLOT + 1) + "_" +  eaSymbol); //  13个点止盈
     }
-}
-
-
-
-//兼容老的数据
-double GetHistoryOldProfit(){
-    int total=OrdersHistoryTotal();
-    double historyProfit = 0.0;
-    for(int i = total-1; i >= 0; i --)
-    {
-        if(OrderSelect(i, SELECT_BY_POS, MODE_HISTORY)==false) continue;
-        string symbol = OrderSymbol();
-        if(StringFind(symbol, eaSymbol) == -1) continue;
-        string comment =  OrderComment();
-        if(StringFind(comment, UP_COMMENT) > -1 || StringFind(comment, DOWN_COMMENT) > -1) continue;
-        int orderType = OrderType();
-        if(StringFind(comment, DIVIDE_FLAG_COMMENT + eaSymbol) > -1) { //找到开始标识，则停止计算历史盈利
-            break;
-        } else if(StringFind(symbol, eaSymbol) > -1 && StringFind(comment, "ea", 0) > -1) {
-            historyProfit = historyProfit + OrderProfit() + OrderSwap();
-        }
-    }
-    return historyProfit;
 }
 
 //+-----------------------检查历史单子-------------------------------------------+
@@ -434,12 +463,12 @@ double GetHistoryProfit(int inOrderType = 0){
 //+----------------------检查环境(包括点差、时间)--------------------------------------------+
 bool CheckTheEnv(int maxSpread = 30) {
     // 打印EA运行天数
-    PrintEARunningDays();
+    // PrintEARunningDays();
 
     //点差扩大不开仓
     double spread = MarketInfo(eaSymbol, MODE_SPREAD);
     if(spread > maxSpread) {
-        Print("the spread exceed the max================maxSpread=", maxSpread, ", now=", spread);
+        // Print("the spread exceed the max================maxSpread=", maxSpread, ", now=", spread);
         return false;
     }
 
@@ -463,7 +492,7 @@ void openOrder(string symbol, int orderType = 0, double volume = 0.01, double st
     if(!res)
         Print("Error in OrderSend. Error code=",GetLastError());
     else {
-        Print("OrderSend  successfully.");
+        // Print("OrderSend  successfully.");
     }
 
 }
@@ -474,7 +503,7 @@ void CloseOrder(string closeType = "11111", ulong ticket = 10000, string symbol 
     // Update the exchange rates before closing the orders.
     RefreshRates();
     // Log in the terminal the total of orders, current and past.
-    Print(OrdersTotal());
+    //Print(OrdersTotal());
 
     // Start a loop to scan all the orders.
     // The loop starts from the last order, proceeding backwards; Otherwise it would skip some orders.

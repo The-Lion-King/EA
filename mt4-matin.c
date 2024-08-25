@@ -26,6 +26,8 @@ input double SOLVE_POINT = 0; // 首单波动多大开始对冲
 input int SYMBOLLIMIT_TOTAL = 30; // 每个品种最多开多少单
 input int MAX_SPREAD = 30; // 点差大于多少不交易
 
+input double MAX_LOTS = 0.2;
+
 
 input double STARTLOT = 0.05; // 第一单手数大小
 input double SEPLOT = 0.05; // 间隔手数
@@ -216,7 +218,7 @@ void CheckOrders(){
         return;
     }
     double lot = SEPLOT;
-    double vol = 0.0;
+    double vol = newOpenVolume + lot;
     //double balance = AccountEquity();
     //if(balance > 8000){
     //  lot = 0.02;
@@ -234,6 +236,10 @@ void CheckOrders(){
         lot = lot - 0.01;
     }
 
+    if(vol > MAX_LOTS){
+        vol = MAX_LOTS;
+    }
+
     if(newOpenOrderType == 0) { // 买，用ASK价格对比
         currentPrice =  SymbolInfoDouble(eaSymbol, SYMBOL_ASK); // 买价
     }
@@ -243,7 +249,7 @@ void CheckOrders(){
         if(newOpenOrderType == 1) { // sell
             tp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - TACKPROFIT_POINT;
         }
-        openOrder(eaSymbol, newOpenOrderType, newOpenVolume + lot, 0, tp, "ea_"  + MathCeil(newOpenVolume / SEPLOT + 1) + "_" +  eaSymbol); //  13个点止盈
+        openOrder(eaSymbol, newOpenOrderType, vol, 0, tp, "ea_"  + MathCeil(newOpenVolume / SEPLOT + 1) + "_" +  eaSymbol); //  13个点止盈
     }
 }
 

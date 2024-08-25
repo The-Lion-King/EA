@@ -37,6 +37,10 @@ input int MAX_SPREAD = 60; // 点差大于多少不交易
 input int STOP_TRADE_MINUTES = 1; // 短时间内波动太大停止做单多久(分钟)
 input double HARVEST_RATE = 2; // Start hedging when profit is several times the loss
 
+input int SUPER_NUM = 6;// 超过多少单后首单双倍
+
+input double LAST_LOST = 0.2; // 末单超过多少后反向开双倍
+
 input string divide2 = "===================="; // ==========间隔仓位调整==============
 //input double STAGE_LOT_1 = 0.23; // 加仓间隔调整第一级->0.03||0.01
 //input double STAGE_LOT_2 = 0.30; // 加仓间隔调整第二级->0.01
@@ -206,7 +210,7 @@ void OnTick()
         int orderType = 0;
         openOrder(eaSymbol, orderType, MINI_LOT, 0, divTp, DIVIDE_FLAG_UP_COMMENT + eaSymbol); // buy limit挂单作为开始标识
         double lot = STARTLOT;
-        if(eaSymbolDownTotal >= 6 || downLastLot > 0.2){ //如果现存空单大于6单 那就把多单首次开单double
+        if(eaSymbolDownTotal >= SUPER_NUM || downLastLot > LAST_LOST){ //如果现存空单大于6单 那就把多单首次开单double
             lot = STARTLOT * 2;
         }
         // openOrder(eaSymbol, orderType, STARTLOT, 0, tp, UP_COMMENT + "1_" + eaSymbol); // buy
@@ -220,7 +224,7 @@ void OnTick()
         double divTp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - divProfit_point;
         openOrder(eaSymbol, orderType, MINI_LOT, 0, divTp, DIVIDE_FLAG_DOWN_COMMENT + eaSymbol); // buy limit挂单作为开始标识
         double lot = STARTLOT;
-        if(eaSymbolUpTotal >= 6 || upLastLot > 0.2){ //如果现存多单大于6单 那就把空单首次开单double
+        if(eaSymbolUpTotal >= SUPER_NUM || upLastLot > LAST_LOST){ //如果现存多单大于6单 那就把空单首次开单double
             lot = STARTLOT * 2;
         }
         openOrder(eaSymbol, orderType, lot, 0, tp, DOWN_COMMENT + "1_" + eaSymbol); // sell
@@ -350,6 +354,8 @@ void CheckOrders(int inOrderType = 0){
     double r_SEPLOT = SEPLOT;
     double r_WAVE_POINT = WAVE_POINT; //卖单的加仓点数
 
+    double profilePoint = TACKPROFIT_POINT;
+
     if(inOrderType == 0){   //买单的加仓点数
         r_WAVE_POINT = CALL_WAVE_POINT;
     }
@@ -371,16 +377,20 @@ void CheckOrders(int inOrderType = 0){
         r_SEPLOT = r_SEPLOT - 0.01;
     }
 
-
+   if(newOpenVolume + r_SEPLOT  > 0.1 && newOpenVolume + r_SEPLOT  <= 0.2){
+       profilePoint = profilePoint / 2;
+   } else if(newOpenVolume + r_SEPLOT  > 0.2){
+        profilePoint = profilePoint / 3;
+    }
 
 
 
     Print("max lots=", maxVolume, ", origin sep lot=", SEPLOT,  ", new sep lot=" + DoubleToStr(r_SEPLOT, 2), ", max loss=", DoubleToStr(MAX_LOSS, 2));
 
     if(newOpenProfit < 0 &&  MathAbs(NormalizeDouble(currentPrice - newOpenPrice, 5)) > r_WAVE_POINT ) { //如果当前价格与最近交易单子，亏损大于20个点
-        double tp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + TACKPROFIT_POINT;  // buy
+        double tp = SymbolInfoDouble(eaSymbol, SYMBOL_ASK) + profilePoint;  // buy
         if(inOrderType == 1) { // sell
-            tp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - TACKPROFIT_POINT;
+            tp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - profilePoint;
         }
         openOrder(eaSymbol, inOrderType, newOpenVolume + r_SEPLOT, 0, tp, targetComment + MathCeil(newOpenVolume / SEPLOT + 1) + "_" +  eaSymbol); //  13个点止盈
     }
