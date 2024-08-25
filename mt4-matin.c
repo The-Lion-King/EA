@@ -26,7 +26,7 @@ input double SOLVE_POINT = 0; // 首单波动多大开始对冲
 input int SYMBOLLIMIT_TOTAL = 30; // 每个品种最多开多少单
 input int MAX_SPREAD = 30; // 点差大于多少不交易
 
-input double MAX_LOTS = 0.2;
+input double MAX_LOTS = 0.5;
 
 
 input double STARTLOT = 0.05; // 第一单手数大小
