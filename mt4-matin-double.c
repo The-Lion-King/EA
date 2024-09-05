@@ -41,6 +41,8 @@ input int SUPER_NUM = 6;// 超过多少单后首单双倍
 
 input double LAST_LOST = 0.2; // 末单超过多少后反向开双倍
 
+input double MAX_LOTS = 0.5; // 最多多少手
+
 input string divide2 = "===================="; // ==========间隔仓位调整==============
 //input double STAGE_LOT_1 = 0.23; // 加仓间隔调整第一级->0.03||0.01
 //input double STAGE_LOT_2 = 0.30; // 加仓间隔调整第二级->0.01
@@ -354,6 +356,8 @@ void CheckOrders(int inOrderType = 0){
     double r_SEPLOT = SEPLOT;
     double r_WAVE_POINT = WAVE_POINT; //卖单的加仓点数
 
+    double vol = newOpenVolume + r_SEPLOT;
+
     double profilePoint = TACKPROFIT_POINT;
 
     if(inOrderType == 0){   //买单的加仓点数
@@ -377,11 +381,18 @@ void CheckOrders(int inOrderType = 0){
         r_SEPLOT = r_SEPLOT - 0.01;
     }
 
+
+
    if(newOpenVolume + r_SEPLOT  > 0.1 && newOpenVolume + r_SEPLOT  <= 0.2){
        profilePoint = profilePoint / 2;
    } else if(newOpenVolume + r_SEPLOT  > 0.2){
         profilePoint = profilePoint / 3;
     }
+
+    if(vol > MAX_LOTS){
+        vol = MAX_LOTS;
+    }
+
 
 
 
@@ -392,7 +403,7 @@ void CheckOrders(int inOrderType = 0){
         if(inOrderType == 1) { // sell
             tp = SymbolInfoDouble(eaSymbol, SYMBOL_BID) - profilePoint;
         }
-        openOrder(eaSymbol, inOrderType, newOpenVolume + r_SEPLOT, 0, tp, targetComment + MathCeil(newOpenVolume / SEPLOT + 1) + "_" +  eaSymbol); //  13个点止盈
+        openOrder(eaSymbol, inOrderType,vol, 0, tp, targetComment + MathCeil(newOpenVolume / SEPLOT + 1) + "_" +  eaSymbol); //  13个点止盈
     }
 }
 
