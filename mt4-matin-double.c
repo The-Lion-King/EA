@@ -356,7 +356,6 @@ void CheckOrders(int inOrderType = 0){
     double r_SEPLOT = SEPLOT;
     double r_WAVE_POINT = WAVE_POINT; //卖单的加仓点数
 
-    double vol = newOpenVolume + r_SEPLOT;
 
     double profilePoint = TACKPROFIT_POINT;
 
@@ -383,11 +382,13 @@ void CheckOrders(int inOrderType = 0){
 
 
 
-   if(newOpenVolume + r_SEPLOT  > 0.1 && newOpenVolume + r_SEPLOT  <= 0.2){
-       profilePoint = profilePoint / 2;
-   } else if(newOpenVolume + r_SEPLOT  > 0.2){
-        profilePoint = profilePoint / 3;
-    }
+//   if(newOpenVolume + r_SEPLOT  > 0.1 && newOpenVolume + r_SEPLOT  <= 0.2){
+//       profilePoint = profilePoint / 2;
+//   } else if(newOpenVolume + r_SEPLOT  > 0.2){
+//        profilePoint = profilePoint / 3;
+//    }
+
+    double vol = newOpenVolume + r_SEPLOT;
 
     if(vol > MAX_LOTS){
         vol = MAX_LOTS;
