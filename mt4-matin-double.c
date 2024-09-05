@@ -41,7 +41,7 @@ input int SUPER_NUM = 6;// 超过多少单后首单双倍
 
 input double LAST_LOST = 0.2; // 末单超过多少后反向开双倍
 
-input double MAX_LOTS = 0.5; // 最多多少手
+input double MAX_LOTS = 0.2; // 最多多少手
 
 input string divide2 = "===================="; // ==========间隔仓位调整==============
 //input double STAGE_LOT_1 = 0.23; // 加仓间隔调整第一级->0.03||0.01
