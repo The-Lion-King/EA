@@ -19,18 +19,18 @@ double maxLossPoint = 0; // 首单浮亏多少点
 double MINI_LOT = 0.01; // 最小仓位
 
 // 换账户的话，下面这几个个常量需要修改
-input double TACKPROFIT_POINT = 0; // 止盈点数
-input double WAVE_POINT = 0; // 波动多大开始加仓
-input double SOLVE_POINT = 0; // 首单波动多大开始对冲
+input double TACKPROFIT_POINT = 0.0016; // 止盈点数
+input double WAVE_POINT = 0.002; // 波动多大开始加仓
+input double SOLVE_POINT = 0.01; // 首单波动多大开始对冲
 // 为了防止EA意外盲目开单情况，做此限制。当停止开单确认无误后，再提高此数量
 input int SYMBOLLIMIT_TOTAL = 30; // 每个品种最多开多少单
-input int MAX_SPREAD = 30; // 点差大于多少不交易
+input int MAX_SPREAD = 80; // 点差大于多少不交易
 
-input double MAX_LOTS = 0.5; // 最多多少手
+input double MAX_LOTS = 0.2; // 最多多少手
 
 
-input double STARTLOT = 0.05; // 第一单手数大小
-input double SEPLOT = 0.05; // 间隔手数
+input double STARTLOT = 0.03; // 第一单手数大小
+input double SEPLOT = 0.03; // 间隔手数
 input int divideHolding = 30; // 分隔单持仓多久(s)
 
 
